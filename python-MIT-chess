@@ -1,0 +1,214 @@
+# mit_chess.py - V.1.0.0 - A standalone chess library
+# Author: Tonmoy KS
+# License: MIT License
+
+from enum import IntEnum
+from dataclasses import dataclass
+from typing import Optional, List, Tuple
+
+# ==============================================================================
+# 1. CONSTANTS AND ENUMS
+==============================================================================
+
+class Color(IntEnum):
+    WHITE = 0
+    BLACK = 1
+
+class PieceType(IntEnum):
+    PAWN = 1
+    KNIGHT = 2
+    BISHOP = 3
+    ROOK = 4
+    QUEEN = 5
+    KING = 6
+
+# We can create a Piece class to bundle type and color later if needed,
+# but for now, we'll follow your assembly's lead of storing them as integers.
+
+# A simple list of 64 squares for easy lookup.
+# This corresponds to your `square_to_an` string data.
+SQUARES = [
+    A1, B1, C1, D1, E1, F1, G1, H1,
+    A2, B2, C2, D2, E2, F2, G2, H2,
+    # ... and so on up to H8
+] = range(64)
+
+# ==============================================================================
+# 2. THE MOVE CLASS ==============================================================================
+
+@dataclass(frozen=True)
+class Move:
+    from_square: int
+    to_square: int
+    promotion: Optional[PieceType] = None
+
+    def uci(self) -> str:
+        """Returns the move in Universal Chess Interface (UCI) format."""
+        # You will need to implement the logic to convert square indices to "e2e4" etc.
+        # This is the reverse of your `parse_uci_move` assembly function.
+        pass
+
+# ==============================================================================
+# 3. THE BOARD CLASS ==============================================================================
+
+class Board:
+    """
+    Represents a chess position and provides methods for move generation,
+    making moves, and checking game state. This is the Python implementation
+    of the logic in AmeNoOhobari.asm.
+    """
+
+    def __init__(self, fen: Optional[str] = None):
+        """
+        Initializes the board. Can be set to the starting position or a custom FEN.
+        """
+        # --- Board State ---
+        # This is the equivalent of your .bss section variables:
+        # board: resb 64
+        self._board: List[Optional[Tuple[PieceType, Color]]] = [None] * 64
+        # side_to_move: resb 1
+        self.turn: Color = Color.WHITE
+        # castling_rights: resb 1
+        self.castling_rights: int = 0b1111 # Using a bitmask like in assembly
+        # en_passant_square: resb 1
+        self.ep_square: Optional[int] = None
+        
+        self.halfmove_clock: int = 0
+        self.fullmove_number: int = 1
+
+        # --- Caching ---
+        self._legal_moves_cache: Optional[List[Move]] = None
+        
+        # --- Initialization ---
+        if fen is None:
+            self.set_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+        else:
+            self.set_fen(fen)
+
+    def piece_at(self, square: int) -> Optional[Tuple[PieceType, Color]]:
+        """Gets the piece at a given square."""
+        return self._board[square]
+
+    def set_fen(self, fen: str):
+        """
+        Sets the board state from a FEN string.
+        This is the Python version of your FEN parsing logic (which you had as a TODO).
+        It's a well-defined algorithm you can implement cleanly here.
+        """
+        # Reset the board and parse the FEN string piece by piece,
+        # then set the turn, castling rights, etc.
+        pass
+
+    def fen(self) -> str:
+        """
+        Returns the FEN string for the current position.
+        This is the Python version of your `board_to_fen` assembly function.
+        """
+        pass
+
+    # --------------------------------------------------------------------------
+    # STATE MANAGEMENT --------------------------------------------------------------------------
+
+    def push(self, move: Move):
+        """
+        Makes a move on the board, updating the state.
+        This is your `make_move` function.
+        """
+        # 1. Save current state for `pop()`
+        #    (castling rights, ep_square, halfmove_clock)
+        
+        # 2. Move the piece on the board array. Handle captures.
+        
+        # 3. Update castling rights if a king or rook moves.
+        
+        # 4. Set the new en passant square if it's a double pawn push.
+        
+        # 5. Handle promotions.
+        
+        # 6. Switch self.turn.
+        
+        # 7. Update clocks.
+
+        # 8. IMPORTANT: Invalidate any cached data.
+        self._legal_moves_cache = None
+
+    def pop(self):
+        """
+        Restores the board to the state before the last move.
+        This is your `unmake_move` function.
+        """
+        # Restore all the state you saved in `push()` from a stack or undo object.
+        # This must be a perfect reversal.
+
+    # --------------------------------------------------------------------------
+    # MOVE GENERATION --------------------------------------------------------------------------
+
+    @property
+    def legal_moves(self) -> List[Move]:
+        """
+        Generates and returns a list of all legal moves for the current position.
+        """
+        if self._legal_moves_cache is not None:
+            return self._legal_moves_cache
+
+        pseudo_legal_moves = self._generate_pseudo_legal_moves()
+        legal_moves = []
+
+        # Filter for legality. This is the logic where you make a move,
+        # check if the king is attacked, and then unmake it.
+        for move in pseudo_legal_moves:
+            self.push(move)
+            # is_attacked() needs to be implemented based on your assembly logic.
+            if not self.is_attacked(self.king_square(not self.turn), self.turn):
+                legal_moves.append(move)
+            self.pop()
+            
+        self._legal_moves_cache = legal_moves
+        return legal_moves
+
+    def _generate_pseudo_legal_moves(self) -> List[Move]:
+        """
+        Generates all moves that are possible, without checking for check.
+        You will break this down piece by piece, just like in AmeNoOhobari.
+        """
+        moves = []
+        for square, piece in enumerate(self._board):
+            if piece and piece.color == self.turn:
+                ptype, pcolor = piece
+                # Call the specific move generator for each piece type.
+                # if ptype == PieceType.PAWN: moves.extend(self._generate_pawn_moves(square))
+                # if ptype == PieceType.KNIGHT: moves.extend(self._generate_knight_moves(square))
+                # ... and so on.
+        return moves
+        
+    # Example for one piece type:
+    def _generate_knight_moves(self, square: int) -> List[Move]:
+        """Your `generate_knight_moves` logic goes here."""
+        # Use your knight_offsets from assembly and check for board boundaries
+        # and whether the destination square is occupied by a friendly piece.
+        pass
+
+    # --------------------------------------------------------------------------
+    # GAME STATE CHECKS --------------------------------------------------------------------------
+
+    def is_check(self) -> bool:
+        """Is the current side to move in check?"""
+        return self.is_attacked(self.king_square(self.turn), not self.turn)
+    
+    def is_attacked(self, square: int, by_color: Color) -> bool:
+        """
+        Is a given square attacked by the given color?
+        This is the Python version of your `is_square_attacked` function.
+        You'll implement pawn, knight, and sliding piece attack checks here.
+        """
+        pass
+
+    def is_checkmate(self) -> bool:
+        """Is the game a checkmate?"""
+        return self.is_check() and not self.legal_moves
+
+    def is_stalemate(self) -> bool:
+        """Is the game a stalemate?"""
+        return not self.is_check() and not self.legal_moves
+
+    # Add other state checks like is_insufficient_material, is_repetition...
